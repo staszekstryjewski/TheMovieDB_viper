@@ -7,6 +7,8 @@
 
 import Foundation
 
-struct Movie {
-    var title: String
+struct MovieListModel: Hashable {
+    let id: Int
+    let title: String
+    let favorite: Bool
 }

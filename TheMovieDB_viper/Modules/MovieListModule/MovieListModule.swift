@@ -8,7 +8,6 @@
 import UIKit
 
 protocol ListView: AnyObject {
-    func showItems(_ items: [Movie])
     func showError(_ message: String)
 }
 
@@ -16,45 +15,49 @@ protocol ListPresenter: AnyObject {
     var view: ListView? { get set }
     var interactor: ListInteractor? { get set }
     var router: ListRouter? { get set }
-
-    func viewDidLoad()
-    func didSelectItem(_ item: Movie)
+    func loadMore()
+    func didSelectItem(at indexPath: IndexPath)
+    func createDataSource(tableView: UITableView)
 }
 
-protocol ListInteractor:AnyObject {
+protocol ListInteractor: AnyObject {
     var presenter: ListPresenter? { get set }
-    func fetchItems() -> [Movie]
+    func fetchMore() async throws -> [MovieListModel]
+    func toggleFavorite(_ id: Int) async throws -> [MovieListModel]
+    func isFavorite(_ id: Int) -> Bool
 }
 
 protocol ListRouter: AnyObject {
     var viewController: UIViewController? { get set }
-    func navigateToDetailScreen(with item: Movie)
+    func navigateToDetailScreen(with id: Int)
 }
 
-struct MovieListModule {
-    private(set) var viewController: MovieListViewController
-    private(set) var interactor: MovieListInteractor
-    private(set) var presenter: MovieListPresenter
-    private(set) var router: MovieListRouter
+typealias MovieListModuleDependencies = APIClientProviding & FavoritesManagerProviding & MovieListRouterDependencies
 
-    static func build() -> MovieListModule {
-        let module = MovieListModule(
-            viewController: .init(),
-            interactor: .init(),
-            presenter: .init(),
-            router: .init()
-        )
+struct MovieListModule<Dependencies>: Dependent where Dependencies: MovieListModuleDependencies {
+
+    private(set) var viewController: MovieListViewController
+    private let interactor: MovieListInteractor<Dependencies>
+    private let presenter: MovieListPresenter
+    private let router: MovieListRouter<Dependencies>
+
+    let dependencies: Dependencies
+
+    init(dependencies: Dependencies) {
+        self.dependencies = dependencies
+        viewController = .init()
+        interactor = .init(dependencies: dependencies)
+        presenter = .init()
+        router =  .init(dependencies: dependencies)
 
         // Strong references
-        module.viewController.presenter = module.presenter
-        module.presenter.interactor = module.interactor
-        module.presenter.router = module.router
+        viewController.presenter = presenter
+        presenter.interactor = interactor
+        presenter.router = router
 
         // Weak references
-        module.interactor.presenter = module.presenter
-        module.presenter.view = module.viewController
-        module.router.viewController = module.viewController
-
-        return module
+        interactor.presenter = presenter
+        presenter.view = viewController
+        router.viewController = viewController
     }
 }

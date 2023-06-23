@@ -7,10 +7,21 @@
 
 import UIKit
 
-final class MovieListRouter: ListRouter {
-    weak var viewController: UIViewController?
+typealias MovieListRouterDependencies = MovieDetailsModuleDependencies
 
-    func navigateToDetailScreen(with item: Movie) {
-        print("navigate to:", item.title)
+final class MovieListRouter<Dependencies>: ListRouter, Dependent where Dependencies: MovieListRouterDependencies {
+    weak var viewController: UIViewController?
+    let dependencies: Dependencies
+
+    init(dependencies: Dependencies) {
+        self.dependencies = dependencies
+    }
+
+    func navigateToDetailScreen(with id: Int) {
+        let module = MovieDetailsModule(id: id, dependencies:  dependencies)
+        guard let navigation = viewController?.navigationController else {
+            fatalError("missing navigation...")
+        }
+        navigation.pushViewController(module.viewController, animated: true)
     }
 }

@@ -6,48 +6,62 @@
 //
 
 import UIKit
+import SnapKit
 
-final class MovieListViewController: UITableViewController {
-    private let cellId = "cell"
+final class MovieListViewController: UIViewController, AlertShowing {
     var presenter: ListPresenter?
-    
-    private var items: [Movie] = []
+
+    private let tableView = UITableView()
+    private var isLoading: Bool = false
 
     override func viewDidLoad() {
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: cellId)
-        presenter?.viewDidLoad()
+        super.viewDidLoad()
+        setupAppearance()
+        setupTableView()
+        startPresenter()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationController?.navigationItem.largeTitleDisplayMode = .automatic
+        tableView.reloadData()
+    }
+
+    private func setupAppearance() {
+        title = "Now playing"
+    }
+
+    private func startPresenter() {
+        presenter?.createDataSource(tableView: tableView)
+        presenter?.loadMore()
+    }
+
+    private func setupTableView() {
+        view.addSubview(tableView)
+        tableView.delegate = self
+        tableView.snp.makeConstraints { $0.edges.equalToSuperview() }
+        tableView.rowHeight = 80
+        tableView.register(MovieListCell.self, forCellReuseIdentifier: MovieListCell.reuseIndentifier)
     }
 }
 
-extension MovieListViewController {
-    override func numberOfSections(in tableView: UITableView) -> Int {
-        1
+extension MovieListViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        presenter?.didSelectItem(at: indexPath)
     }
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        items.count
-    }
-
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let item = items[indexPath.row]
-        let cell = tableView.dequeueReusableCell(withIdentifier: cellId, for: indexPath)
-        cell.textLabel?.text = item.title
-        return cell
-    }
-
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let item = items[indexPath.row]
-        presenter?.didSelectItem(item)
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        let rows = tableView.numberOfRows(inSection: indexPath.section)
+        guard indexPath.row == rows - 1, !isLoading else {
+            return
+        }
+        presenter?.loadMore()
     }
 }
 
 extension MovieListViewController: ListView {
-    func showItems(_ items: [Movie]) {
-        self.items = items
-        tableView.reloadData()
-    }
-
     func showError(_ message: String) {
-        print("ERRROR:", message)
+        showAlert(message)
     }
 }

@@ -7,8 +7,28 @@
 
 import UIKit
 
-final class MainRouter {
+typealias AppModelDependencies = MovieListModuleDependencies & MovieDetailsModuleDependencies
+
+struct AppDependencies: AppModelDependencies {
+    var apiClient: APIClient
+    var tokenProvider: TokenProviderProtocol
+    var favoritesManager: FavoritesManagerProtocol
+    var imageService: ImageProvider
+
+    init(apiClient: APIClient, tokenProvider: TokenProviderProtocol, favoritesManager: FavoritesManagerProtocol, imageService: ImageProvider) {
+        self.apiClient = apiClient
+        self.tokenProvider = tokenProvider
+        self.favoritesManager = favoritesManager
+        self.imageService = imageService
+    }
+}
+
+final class MainRouter<Dependencies>: Dependent where Dependencies: AppModelDependencies {
+    let dependencies: Dependencies
+    init(dependencies: Dependencies) {
+        self.dependencies = dependencies
+    }
     func start() -> UIViewController {
-        MovieListModule.build().viewController
+        MovieListModule<Dependencies>(dependencies: dependencies).viewController
     }
 }
