@@ -16,9 +16,9 @@ extension AlertShowing where Self: UIViewController {
         let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
         let cancel = UIAlertAction(title: "OK", style: .default)
         alert.addAction(cancel)
+        
         DispatchQueue.main.async { [weak self] in
             self?.present(alert, animated: false)
         }
-
     }
 }

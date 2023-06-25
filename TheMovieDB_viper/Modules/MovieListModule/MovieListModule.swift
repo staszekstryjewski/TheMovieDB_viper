@@ -18,12 +18,16 @@ protocol ListPresenter: AnyObject {
     func loadMore()
     func didSelectItem(at indexPath: IndexPath)
     func createDataSource(tableView: UITableView)
+    func search(for query: String)
+    func fetchNowPlaying()
 }
 
 protocol ListInteractor: AnyObject {
     var presenter: ListPresenter? { get set }
     func fetchMore() async throws -> [MovieListModel]
     func toggleFavorite(_ id: Int) async throws -> [MovieListModel]
+    func searchFor(query: String) async throws -> [MovieListModel]
+    func fetchNowPlaying() async throws -> [MovieListModel]
     func isFavorite(_ id: Int) -> Bool
 }
 

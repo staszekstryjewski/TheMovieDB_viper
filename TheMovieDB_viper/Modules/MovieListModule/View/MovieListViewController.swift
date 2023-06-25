@@ -13,18 +13,29 @@ final class MovieListViewController: UIViewController, AlertShowing {
 
     private let tableView = UITableView()
     private var isLoading: Bool = false
+    private var isSearchActive: Bool = false
+
+    private let searchController = UISearchController(searchResultsController: nil).then {
+        $0.searchBar.searchBarStyle = .minimal
+        $0.searchBar.placeholder = "Search"
+        $0.searchBar.showsCancelButton = true
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupAppearance()
         setupTableView()
         startPresenter()
+        navigationController?.navigationBar.topItem?.searchController = searchController
+        searchController.searchResultsUpdater = self
+
+        searchController.searchBar.delegate = self
+        searchController.hidesNavigationBarDuringPresentation = false
+        definesPresentationContext = true
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.navigationBar.prefersLargeTitles = true
-        navigationController?.navigationItem.largeTitleDisplayMode = .automatic
         tableView.reloadData()
     }
 
@@ -34,7 +45,7 @@ final class MovieListViewController: UIViewController, AlertShowing {
 
     private func startPresenter() {
         presenter?.createDataSource(tableView: tableView)
-        presenter?.loadMore()
+        presenter?.fetchNowPlaying()
     }
 
     private func setupTableView() {
@@ -52,6 +63,7 @@ extension MovieListViewController: UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        guard tableView.isDragging else { return }
         let rows = tableView.numberOfRows(inSection: indexPath.section)
         guard indexPath.row == rows - 1, !isLoading else {
             return
@@ -63,5 +75,26 @@ extension MovieListViewController: UITableViewDelegate {
 extension MovieListViewController: ListView {
     func showError(_ message: String) {
         showAlert(message)
+    }
+}
+
+extension MovieListViewController: UISearchResultsUpdating {
+    func updateSearchResults(for searchController: UISearchController) {
+        isSearchActive = searchController.isActive
+    }
+}
+
+extension MovieListViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        guard let query = searchBar.text else { return }
+        searchBar.resignFirstResponder()
+        presenter?.search(for: query)
+    }
+
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        guard isSearchActive else { return }
+        tableView.scrollToRow(at: [0,0], at: .top, animated: false)
+        searchBar.resignFirstResponder()
+        presenter?.fetchNowPlaying()
     }
 }

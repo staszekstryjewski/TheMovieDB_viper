@@ -14,7 +14,7 @@ final class MovieListPresenter: ListPresenter {
     var interactor: ListInteractor?
     var router: ListRouter?
 
-    enum Section {
+    private enum Section {
         case main
     }
 
@@ -37,6 +37,30 @@ final class MovieListPresenter: ListPresenter {
         Task {
             do {
                 let items = try await interactor.fetchMore()
+                updateSnapshot(with: items, withAnimation: false)
+            } catch {
+                view?.showError(error.localizedDescription)
+            }
+        }
+    }
+
+    func fetchNowPlaying() {
+        guard let interactor = interactor else { return }
+        Task {
+            do {
+                let items = try await interactor.fetchNowPlaying()
+                updateSnapshot(with: items, withAnimation: false)
+            } catch {
+                view?.showError(error.localizedDescription)
+            }
+        }
+    }
+
+    func search(for query: String) {
+        guard let interactor = interactor else { return }
+        Task {
+            do {
+                let items = try await interactor.searchFor(query: query)
                 updateSnapshot(with: items, withAnimation: false)
             } catch {
                 view?.showError(error.localizedDescription)

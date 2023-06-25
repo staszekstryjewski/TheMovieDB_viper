@@ -11,4 +11,9 @@ struct MovieListModel: Hashable {
     let id: Int
     let title: String
     let favorite: Bool
+    private let uuid = UUID()
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(uuid)
+    }
 }
