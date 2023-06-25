@@ -7,47 +7,60 @@
 
 import Foundation
 
-protocol FavoritesInfoProviding {
+protocol FavoritesManagerProtocol {
+    @discardableResult func change(id: Int) -> Bool
     func isFavorite(id: Int) -> Bool
 }
 
-protocol FavoritesManagerProtocol: FavoritesInfoProviding {
-    @discardableResult func change(id: Int) -> Bool
-}
-
-// TODO: This could probably lead to data races. Consider using actor.
 class FavoritesManager: FavoritesManagerProtocol {
-    private let favoritesKey: String = "FavoritesManagerStore"
+    private let favoritesKey: String = "DiskFavoritesManagerStore"
+    private let favoritesFileURL: URL
+
+    private let favoritesQueue = DispatchQueue(label: "com.theMovieDB_viper.favoritesQueue")
+
+    init() {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        favoritesFileURL = documentsDirectory.appendingPathComponent(favoritesKey).appendingPathExtension("plist")
+    }
 
     @discardableResult
     func change(id: Int) -> Bool {
-        var favorites = getFavorites()
-        if favorites.contains(id) {
-            favorites.remove(id)
-        } else {
-            favorites.insert(id)
+        favoritesQueue.sync {
+            var favorites = getFavorites()
+            if favorites.contains(id) {
+                favorites.remove(id)
+            } else {
+                favorites.insert(id)
+            }
+            saveFavorites(favorites)
         }
 
-        saveFavorites(favorites)
-        return favorites.contains(id)
+        return isFavorite(id: id)
     }
 
     func isFavorite(id: Int) -> Bool {
-        let favorites = getFavorites()
-        return favorites.contains(id)
+        var isFavorite = false
+        favoritesQueue.sync {
+            let favorites = getFavorites()
+            isFavorite = favorites.contains(id)
+        }
+        return isFavorite
     }
 
     private func getFavorites() -> Set<Int> {
-        if let favoritesData = UserDefaults.standard.data(forKey: favoritesKey),
-           let favorites = try? JSONDecoder().decode(Set<Int>.self, from: favoritesData) {
-            return favorites
+        if let favoritesData = try? Data(contentsOf: favoritesFileURL),
+           let decodedFavorites = try? PropertyListDecoder().decode(Set<Int>.self, from: favoritesData) {
+            return decodedFavorites
         }
         return Set<Int>()
     }
 
     private func saveFavorites(_ favorites: Set<Int>) {
-        if let favoritesData = try? JSONEncoder().encode(favorites) {
-            UserDefaults.standard.set(favoritesData, forKey: favoritesKey)
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+
+        if let favoritesData = try? encoder.encode(favorites) {
+            try? favoritesData.write(to: favoritesFileURL, options: .atomic)
         }
     }
 }
